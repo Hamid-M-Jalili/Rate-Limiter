@@ -13,6 +13,8 @@ public interface RateLimiter {
      * @return true if request is allowed, false otherwise
      */
     boolean isAllowed(String clientId, int limit, long windowSize);
+
+    boolean isAllowed(String clientId, int limit, long windowSize, RateLimitingStrategy strategy);
     
     /**
      * Gets the remaining number of requests for a client
