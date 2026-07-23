@@ -24,7 +24,9 @@ public interface RateLimiter {
      * @return Number of remaining requests
      */
     int getRemainingRequests(String clientId, int limit, long windowSize);
-    
+
+    int getRemainingRequests(String clientId, int limit, long windowSize, RateLimitingStrategy strategy);
+
     /**
      * Gets the time until reset for a client
      * @param clientId Unique identifier for the client
@@ -33,4 +35,6 @@ public interface RateLimiter {
      * @return Time in milliseconds until reset
      */
     long getTimeToReset(String clientId, int limit, long windowSize);
+
+    long getTimeToReset(String clientId, int limit, long windowSize, RateLimitingStrategy strategy);
 }

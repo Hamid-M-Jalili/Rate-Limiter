@@ -13,5 +13,10 @@ public enum RateLimitingStrategy {
      * Soft rate limiting - requests may be queued when over limit, 
      * with a grace period before rejection
      */
-    SOFT
+    SOFT,
+    
+    /**
+     * Token bucket rate limiting - uses token-based algorithm for rate limiting
+     */
+    TOKEN_BUCKET
 }
