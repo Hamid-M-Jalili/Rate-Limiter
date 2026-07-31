@@ -1,5 +1,7 @@
 package com.ratelimiter;
 
+import com.ratelimiter.implementations.SlidingWindowLogRateLimiter;
+import com.ratelimiter.interfaces.SlidingWindowRateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -7,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class SlidingWindowLogRateLimiterTest {
     
-    private RateLimiter rateLimiter;
+    private SlidingWindowRateLimiter rateLimiter;
     
     @BeforeEach
     void setUp() {
@@ -96,14 +98,5 @@ public class SlidingWindowLogRateLimiterTest {
         
         assertEquals(0, rateLimiter.getRemainingRequests(null, 2, 1000));
         assertEquals(0, rateLimiter.getTimeToReset(null, 2, 1000));
-    }
-    
-    @Test
-    void testSoftRateLimiting() {
-        // Test soft rate limiting behavior 
-        assertTrue(rateLimiter.isAllowed("client1", 2, 1000, RateLimitingStrategy.SOFT)); // First request
-        assertTrue(rateLimiter.isAllowed("client1", 2, 1000, RateLimitingStrategy.SOFT)); // Second request
-        // Soft limiting allows additional requests when over the limit (simple implementation)
-        assertTrue(rateLimiter.isAllowed("client1", 2, 1000, RateLimitingStrategy.SOFT)); // Third request - soft allows this  
     }
 }

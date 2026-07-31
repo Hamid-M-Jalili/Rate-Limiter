@@ -1,4 +1,7 @@
-package com.ratelimiter;
+package com.ratelimiter.implementations;
+
+import com.ratelimiter.RateLimitingStrategy;
+import com.ratelimiter.interfaces.SlidingWindowRateLimiter;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,7 +11,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Sliding window log rate limiter implementation
  * Uses timestamp-based approach for accurate sliding window calculations
  */
-public class SlidingWindowLogRateLimiter implements RateLimiter {
+public class SlidingWindowLogRateLimiter implements SlidingWindowRateLimiter {
     
     // Thread-safe storage of client request timestamps
     private final Map<String, RequestHistory> clientRequests = new ConcurrentHashMap<>();
@@ -239,6 +242,27 @@ public class SlidingWindowLogRateLimiter implements RateLimiter {
         } finally {
             lock.readLock().unlock();
         }
+    }
+    
+    @Override
+    public boolean isAllowed(String clientId) {
+        // Default implementation: using typical sliding window parameters 
+        // This provides backward compatibility while adhering to the new interface structure
+        return this.isAllowed(clientId, 10, 60000); // default 10 requests per minute
+    }
+    
+    @Override
+    public int getRemainingRequests(String clientId) {
+        // Default implementation: using typical sliding window parameters 
+        // This provides backward compatibility while adhering to the new interface structure
+        return this.getRemainingRequests(clientId, 10, 60000); // default 10 requests per minute
+    }
+    
+    @Override
+    public long getTimeToReset(String clientId) {
+        // Default implementation: using typical sliding window parameters 
+        // This provides backward compatibility while adhering to the new interface structure
+        return this.getTimeToReset(clientId, 10, 60000); // default 10 requests per minute
     }
     
     /**

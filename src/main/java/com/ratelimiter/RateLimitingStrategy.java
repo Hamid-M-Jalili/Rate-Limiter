@@ -14,9 +14,4 @@ public enum RateLimitingStrategy {
      * with a grace period before rejection
      */
     SOFT,
-    
-    /**
-     * Token bucket rate limiting - uses token-based algorithm for rate limiting
-     */
-    TOKEN_BUCKET
 }

@@ -1,4 +1,6 @@
-package com.ratelimiter;
+package com.ratelimiter.implementations;
+
+import com.ratelimiter.interfaces.BucketRateLimiter;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,7 +10,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Token bucket rate limiter implementation
  * Uses the token bucket algorithm for rate limiting with configurable tokens per second and burst capacity
  */
-public class TokenBucketRateLimiter implements RateLimiter {
+public class TokenBucketRateLimiter implements BucketRateLimiter {
     
     // Thread-safe storage of client token buckets
     private final Map<String, TokenBucket> clientBuckets = new ConcurrentHashMap<>();
@@ -52,17 +54,32 @@ public class TokenBucketRateLimiter implements RateLimiter {
     }
     
     @Override
-    public boolean isAllowed(String clientId, int limit, long windowSize) {
-        if (clientId == null || limit <= 0 || windowSize <= 0) {
+    public boolean isAllowed(String clientId) {
+        // Default implementation: using typical token bucket parameters
+        return this.isAllowed(clientId, config.getTokensPerSecond(), config.getMaxBurstSize());
+    }
+    
+    @Override
+    public int getRemainingRequests(String clientId) {
+        // Default implementation: using typical token bucket parameters
+        return this.getRemainingRequests(clientId, config.getTokensPerSecond(), config.getMaxBurstSize());
+    }
+    
+    @Override
+    public long getTimeToReset(String clientId) {
+        // Default implementation: using typical token bucket parameters
+        return this.getTimeToReset(clientId, config.getTokensPerSecond(), config.getMaxBurstSize());
+    }
+
+    @Override
+    public boolean isAllowed(String clientId, int tokensPerSecond, int maxBurstSize) {
+        if (clientId == null || tokensPerSecond <= 0 || maxBurstSize <= 0) {
             return false;
         }
         
-        // For token bucket, we use tokensPerSecond as the rate limit and maxBurstSize for burst capacity
-        // The "limit" parameter is not used in traditional token bucket implementation,
-        // but it's kept for API compatibility. We'll just ignore these parameters.
         long currentTime = System.currentTimeMillis();
         
-        TokenBucket bucket = clientBuckets.computeIfAbsent(clientId, k -> new TokenBucket(config.getTokensPerSecond(), config.getMaxBurstSize()));
+        TokenBucket bucket = clientBuckets.computeIfAbsent(clientId, k -> new TokenBucket(tokensPerSecond, maxBurstSize));
         
         lock.writeLock().lock();
         try {
@@ -71,38 +88,17 @@ public class TokenBucketRateLimiter implements RateLimiter {
             lock.writeLock().unlock();
         }
     }
-    
+
     @Override
-    public boolean isAllowed(String clientId, int limit, long windowSize, RateLimitingStrategy strategy) {
-        if (clientId == null || limit <= 0 || windowSize <= 0) {
-            return false;
-        }
-        
-        // For token bucket, we use tokensPerSecond as the rate limit and maxBurstSize for burst capacity
-        // The "limit" parameter is not used in traditional token bucket implementation,
-        // but it's kept for API compatibility. We'll just ignore these parameters.
-        long currentTime = System.currentTimeMillis();
-        
-        TokenBucket bucket = clientBuckets.computeIfAbsent(clientId, k -> new TokenBucket(config.getTokensPerSecond(), config.getMaxBurstSize()));
-        
-        lock.writeLock().lock();
-        try {
-            return bucket.tryConsume(1, currentTime);
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-    
-    @Override
-    public int getRemainingRequests(String clientId, int limit, long windowSize) {
-        if (clientId == null || limit <= 0 || windowSize <= 0) {
+    public int getRemainingRequests(String clientId, int tokensPerSecond, int maxBurstSize) {
+        if (clientId == null || tokensPerSecond <= 0 || maxBurstSize <= 0) {
             return 0;
         }
         
         // For token bucket, return the remaining tokens in the bucket
         TokenBucket bucket = clientBuckets.get(clientId);
         if (bucket == null) {
-            return config.getMaxBurstSize();
+            return maxBurstSize;
         }
         
         lock.readLock().lock();
@@ -113,59 +109,17 @@ public class TokenBucketRateLimiter implements RateLimiter {
             lock.readLock().unlock();
         }
     }
-    
+
     @Override
-    public int getRemainingRequests(String clientId, int limit, long windowSize, RateLimitingStrategy strategy) {
-        if (clientId == null || limit <= 0 || windowSize <= 0) {
-            return 0;
-        }
-        
-        // For token bucket, return the remaining tokens in the bucket
-        TokenBucket bucket = clientBuckets.get(clientId);
-        if (bucket == null) {
-            return config.getMaxBurstSize();
-        }
-        
-        lock.readLock().lock();
-        try {
-            long currentTime = System.currentTimeMillis();
-            return Math.toIntExact(bucket.getRemainingTokens(currentTime));
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    @Override
-    public long getTimeToReset(String clientId, int limit, long windowSize) {
-        if (clientId == null || limit <= 0 || windowSize <= 0) {
+    public long getTimeToReset(String clientId, int tokensPerSecond, int maxBurstSize) {
+        if (clientId == null || tokensPerSecond <= 0 || maxBurstSize <= 0) {
             return 0;
         }
         
         TokenBucket bucket = clientBuckets.get(clientId);
         if (bucket == null) {
             // No bucket exists, so we're at max capacity
-            return 0; 
-        }
-        
-        lock.readLock().lock();
-        try {
-            long currentTime = System.currentTimeMillis();
-            return bucket.getTimeToNextToken(currentTime);
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-    
-    @Override
-    public long getTimeToReset(String clientId, int limit, long windowSize, RateLimitingStrategy strategy) {
-        if (clientId == null || limit <= 0 || windowSize <= 0) {
             return 0;
-        }
-        
-        TokenBucket bucket = clientBuckets.get(clientId);
-        if (bucket == null) {
-            // No bucket exists, so we're at max capacity
-            return 0; 
         }
         
         lock.readLock().lock();
@@ -238,7 +192,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
         public long getRemainingTokens(long currentTime) {
             bucketLock.readLock().lock();
             try {
-                // Refill to get current tokens (without consuming)
+                // Create a temporary bucket to calculate current tokens without consuming
                 TokenBucket tempBucket = new TokenBucket(tokensPerSecond, maxBurstSize);
                 tempBucket.tokens = this.tokens;
                 tempBucket.lastRefillTime = this.lastRefillTime;
@@ -256,7 +210,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
         public long getTimeToNextToken(long currentTime) {
             bucketLock.readLock().lock();
             try {
-                // Refill to get current tokens (without consuming)
+                // Create a temporary bucket to calculate the time without consuming
                 TokenBucket tempBucket = new TokenBucket(tokensPerSecond, maxBurstSize);
                 tempBucket.tokens = this.tokens;
                 tempBucket.lastRefillTime = this.lastRefillTime;

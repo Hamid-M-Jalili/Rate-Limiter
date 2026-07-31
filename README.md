@@ -1,6 +1,6 @@
 # Rate Limiter Library
 
-A generic rate limiter library with two implementations: sliding window log and token bucket algorithms.
+A generic rate limiter library with two implementations: **sliding window log** and **token bucket** algorithms.
 
 ## Features
 
@@ -36,7 +36,7 @@ if (allowed) {
 RateLimiter rateLimiter = new TokenBucketRateLimiter(10, 20);
 
 // Check if a request is allowed 
-boolean allowed = rateLimiter.isAllowed("client1", 100, 60000); // limit and windowSize are ignored in token bucket
+boolean allowed = rateLimiter.isAllowed("client1", 100, 60000); 
 
 if (allowed) {
     // Process the request
@@ -65,10 +65,10 @@ long timeToReset = rateLimiter.getTimeToReset("client1", 10, 60000);
 RateLimiter rateLimiter = new TokenBucketRateLimiter(5, 10);
 
 // Get remaining requests (tokens in the bucket)
-int remaining = rateLimiter.getRemainingRequests("client1", 100, 60000); // limit and windowSize are ignored
+int remaining = rateLimiter.getRemainingRequests("client1", 100, 60000); 
 
 // Get time until next token becomes available
-long timeToReset = rateLimiter.getTimeToReset("client1", 100, 60000); // limit and windowSize are ignored
+long timeToReset = rateLimiter.getTimeToReset("client1", 100, 60000);
 ```
 
 ## API Reference
@@ -92,20 +92,52 @@ long timeToReset = rateLimiter.getTimeToReset("client1", 100, 60000); // limit a
 
 ### Token Bucket Algorithm
 
-#### `isAllowed(clientId, limit, windowSize)`
+#### `isAllowed(clientId, tokensPerSecond, maxBurstSize)`
 - **Parameters**: 
   - `clientId`: Unique identifier for the client
-  - `limit`: (Ignored) Maximum number of requests allowed in the time window (rate limiting is based on tokensPerSecond)
-  - `windowSize`: (Ignored) Window size in milliseconds (rate limiting is based on tokensPerSecond)  
+  - `tokensPerSecond`: Number of tokens to add per second (rate limiting)
+  - `maxBurstSize`: Maximum number of tokens that can be accumulated (burst capacity)  
 - **Returns**: `true` if request is allowed, `false` otherwise
 
-#### `getRemainingRequests(clientId, limit, windowSize)`
+#### `getRemainingRequests(clientId, tokensPerSecond, maxBurstSize)`
 - **Parameters**: Same as `isAllowed`
 - **Returns**: Number of remaining tokens for the client (not requests)
 
-#### `getTimeToReset(clientId, limit, windowSize)`  
+#### `getTimeToReset(clientId, tokensPerSecond, maxBurstSize)`  
 - **Parameters**: Same as `isAllowed`
 - **Returns**: Time in milliseconds until next token becomes available
+
+## Backward Compatibility
+For backward compatibility with older versions that used the generic RateLimiter interface:
+```java
+// Sliding Window (old method calls still work)
+RateLimiter slidingWindow = new SlidingWindowLogRateLimiter();
+boolean allowed1 = slidingWindow.isAllowed("client1"); // Uses default 10 requests per minute
+
+// Token Bucket (old method calls still work) 
+RateLimiter tokenBucket = new TokenBucketRateLimiter(10, 20);
+boolean allowed2 = tokenBucket.isAllowed("client1"); // Uses default 10 tokens/sec, burst of 20
+```
+
+## Using Different Rate Limiting Strategies
+
+The rate limiter interface supports different strategies through the `RateLimitingStrategy` parameter. This allows you to configure how requests are handled when they exceed limits:
+
+```java
+// Use hard rate limiting (immediate rejection)
+boolean allowed = rateLimiter.isAllowed("client1", 10, 60000, RateLimitingStrategy.HARD);
+
+// Use soft rate limiting (may queue or delay when over limit) 
+boolean allowed = rateLimiter.isAllowed("client1", 10, 60000, RateLimitingStrategy.SOFT);
+
+// For TokenBucket, the strategy parameter is ignored as token bucket only supports HARD strategy
+boolean allowed = rateLimiter.isAllowed("client1", 10, 60000, RateLimitingStrategy.TOKEN_BUCKET);
+```
+
+The supported strategies are:
+- **HARD**: Requests are immediately accepted or rejected based on limits
+- **SOFT**: Requests may be queued when over limit with a grace period before rejection  
+- **TOKEN_BUCKET**: Uses the token bucket algorithm for rate limiting (only available in TokenBucketRateLimiter)
 
 ## Integration
 
