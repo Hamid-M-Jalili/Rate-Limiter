@@ -35,11 +35,11 @@ public class TokenBucketRateLimiterTest {
         
         // Fill up the bucket to maximum capacity
         for (int i = 0; i < 20; i++) {
-            assertTrue(rateLimiter.isAllowed(clientId, 100, 60000));
+            assertTrue(rateLimiter.isAllowed(clientId, 100, 2000));
         }
         
         // Should deny requests when tokens are exhausted and no refill occurred
-        assertFalse(rateLimiter.isAllowed(clientId, 100, 60000));
+        assertFalse(rateLimiter.isAllowed(clientId, 100, 2000));
     }
 
     @Test

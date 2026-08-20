@@ -2,7 +2,7 @@ package Demos;
 
 import com.ratelimiter.implementations.TokenBucketRateLimiter;
 
-public class TokenBucketRateLimiterRefillTest {
+public class TokenBucketRateLimiterRefillDemo {
     public static void main(String[] args) throws InterruptedException {
         System.out.println("=== Token Bucket Rate Limiter Refill Behavior Test ===");
         

@@ -1,5 +1,6 @@
 package com.ratelimiter;
 
+import com.ratelimiter.implementations.LeakingBucketRateLimiter;
 import com.ratelimiter.implementations.SlidingWindowLogRateLimiter;
 import com.ratelimiter.implementations.TokenBucketRateLimiter;
 import com.ratelimiter.interfaces.RateLimiter;
@@ -14,7 +15,7 @@ public class RateLimiterTest {
         SlidingWindowRateLimiter slidingWindow = new SlidingWindowLogRateLimiter();
         
         // Test basic functionality
-        assertTrue(slidingWindow.isAllowed("client1", 5, 60000)); // Should allow first request
+        assertTrue(slidingWindow.isAllowed("client2", 5, 60000)); // Should allow first request
         
         // Test that we respect the limit 
         for (int i = 0; i < 4; i++) {
@@ -33,7 +34,7 @@ public class RateLimiterTest {
         TokenBucketRateLimiter tokenBucket = new TokenBucketRateLimiter(10, 20); // 10 tokens/sec, burst of 20
         
         // Test basic functionality 
-        assertTrue(tokenBucket.isAllowed("client1", 10, 20)); // Should allow first request
+        assertTrue(tokenBucket.isAllowed("client2", 10, 20)); // Should allow first request
         
         // Test that we respect the token bucket limits
         for (int i = 0; i < 19; i++) { // Use all burst capacity
@@ -48,19 +49,42 @@ public class RateLimiterTest {
     }
     
     @Test
+    public void testLeakingBucketRateLimiter() {
+        LeakingBucketRateLimiter leakingBucket = new LeakingBucketRateLimiter(5, 10); // 5 leak/sec, capacity of 10
+        
+        // Test basic functionality 
+        assertTrue(leakingBucket.isAllowed("client2")); // Should allow first request
+        
+        // Test that we respect the leaking bucket limits
+        for (int i = 0; i < 9; i++) { // Use all capacity
+            assertTrue(leakingBucket.isAllowed("client2"));
+        }
+        
+        assertFalse(leakingBucket.isAllowed("client2")); // Should be over limit
+        
+        // Test remaining requests (should return number of tokens available)
+        int remaining = leakingBucket.getRemainingRequests("client2");
+        assertTrue(remaining >= 0); 
+    }
+    
+    @Test
     public void testBaseRateLimiterInterface() {
         RateLimiter slidingWindow = new SlidingWindowLogRateLimiter();
         RateLimiter tokenBucket = new TokenBucketRateLimiter(5, 10);
+        RateLimiter leakingBucket = new LeakingBucketRateLimiter(5, 10);
         
         // Test basic functionality through base interface
         assertTrue(slidingWindow.isAllowed("client1"));
         assertTrue(tokenBucket.isAllowed("client1"));
+        assertTrue(leakingBucket.isAllowed("client1"));
         
         // Test remaining requests 
         int slidingRemaining = slidingWindow.getRemainingRequests("client1");
         int tokenRemaining = tokenBucket.getRemainingRequests("client1"); 
+        int leakingRemaining = leakingBucket.getRemainingRequests("client1");
         
         assertTrue(slidingRemaining >= 0);
         assertTrue(tokenRemaining >= 0);
+        assertTrue(leakingRemaining >= 0);
     }
 }
